@@ -45,11 +45,11 @@ public class OpentsdbClient
         }
     }
 
-    public static void init(String host, int port)
+    public static void init(String host, int port, String token)
     {
         OpentsdbClient.host = host;
         OpentsdbClient.port = port;
-        OpentsdbClient.token = Config.getInstance().getString("token");
+        OpentsdbClient.token = token;
 
         // create one OpentsdbClient per thread in the thread pool
         instanceIdx = 0;
@@ -69,7 +69,7 @@ public class OpentsdbClient
             instances[i] = new OpentsdbClient();
             instances[i].dps = new ArrayList<>(maxBuff);
 
-            if (StringUtils.isBlank(host))
+            if (StringUtils.isBlank(host) || StringUtils.isBlank(token))
             {
                 instances[i].request = null;
                 instances[i].client = null;

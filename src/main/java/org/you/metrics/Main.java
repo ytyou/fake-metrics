@@ -59,7 +59,8 @@ public class Main
         {
             String host = Config.getInstance().getString("opentsdb.host");
             int port = Config.getInstance().getInt("opentsdb.port", defaultOpentsdbPort);
-            OpentsdbClient.init(host, port);
+            String token = cmd.getOptionValue("token");
+            OpentsdbClient.init(host, port, token);
         }
         catch (Exception ex)
         {
@@ -114,6 +115,10 @@ public class Main
         Option duration = new Option("d", "duration", true, "duration in seconds");
         duration.setRequired(false);
         options.addOption(duration);
+
+        Option token = new Option("t", "token", true, "backend token");
+        token.setRequired(false);   // required when sending metrics to backend
+        options.addOption(token);
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = null;
