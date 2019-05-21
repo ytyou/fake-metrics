@@ -23,9 +23,8 @@ public class OpentsdbClient
     private static final String uri = "api/put?details";
     private static final int maxBuff = 10;
 
-    private static OpentsdbClient[] instances;
-    private static int instanceIdx;
-    private static int instanceCnt;
+    // one instance per thread
+    private static ThreadLocal<OpentsdbClient> opentsdbClient;
 
     private static String host;    // if null, output to console
     private static int port;
@@ -39,9 +38,23 @@ public class OpentsdbClient
 
     public static OpentsdbClient getInstance()
     {
-        synchronized (instances) {
-            instanceIdx = (instanceIdx + 1) % instanceCnt;
-            return OpentsdbClient.instances[instanceIdx];
+        return opentsdbClient.get();
+    }
+
+    private OpentsdbClient()
+    {
+        this.dps = new ArrayList<>(maxBuff);
+
+        if (StringUtils.isBlank(host) || StringUtils.isBlank(token))
+        {
+            this.client = null;
+            this.request = null;
+        }
+        else
+        {
+            HttpClientBuilder builder = HttpClientBuilder.create().setDefaultHeaders(headers);
+            this.client = builder.build();
+            this.request = new HttpPost(String.format("http://%s:%d/%s", host, port, uri));
         }
     }
 
@@ -51,35 +64,13 @@ public class OpentsdbClient
         OpentsdbClient.port = port;
         OpentsdbClient.token = token;
 
-        // create one OpentsdbClient per thread in the thread pool
-        instanceIdx = 0;
-        instanceCnt = Config.getInstance().getInt("thread.count", 1);
-
         // create default http headers
         headers = new HashSet<>();
         headers.add(new BasicHeader("Content-Type", "application/json"));
         headers.add(new BasicHeader("_token", OpentsdbClient.token));
 
-        HttpClientBuilder builder = HttpClientBuilder.create().setDefaultHeaders(headers);
-
-        instances = new OpentsdbClient[instanceCnt];
-
-        for (int i = 0; i < instanceCnt; i++)
-        {
-            instances[i] = new OpentsdbClient();
-            instances[i].dps = new ArrayList<>(maxBuff);
-
-            if (StringUtils.isBlank(host) || StringUtils.isBlank(token))
-            {
-                instances[i].request = null;
-                instances[i].client = null;
-            }
-            else
-            {
-                instances[i].request = new HttpPost(String.format("http://%s:%d/%s", host, port, uri));
-                instances[i].client = builder.build();
-            }
-        }
+        // create one OpentsdbClient per thread in the thread pool
+        opentsdbClient = ThreadLocal.withInitial(OpentsdbClient::new);
     }
 
     public void send(Metric metric)

@@ -2,6 +2,9 @@ package org.you.metrics;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.Random;
@@ -80,11 +83,14 @@ public class Main
         int hostCount = Config.getInstance().getInt("host.count", defaultHostCount);
         int intervalSec = Config.getInstance().getInt("interval.seconds", defaultIntervalSec);
 
+        Set<ScheduledFuture> futures = new HashSet<>();
+
         for (int i = 0; i < hostCount; i++)
         {
             Host host = new Host(metrics);
             long initDelay = random.nextInt(intervalSec);
-            executor.scheduleAtFixedRate(host, initDelay, intervalSec, TimeUnit.SECONDS);
+            ScheduledFuture future = executor.scheduleAtFixedRate(host, initDelay, intervalSec, TimeUnit.SECONDS);
+            futures.add(future);
         }
 
         // wait for all hosts to finish
@@ -100,6 +106,12 @@ public class Main
         finally
         {
             logger.info("Shutting down...");
+
+            for (ScheduledFuture future: futures)
+            {
+                future.cancel(false);
+            }
+
             executor.shutdown();
         }
     }
