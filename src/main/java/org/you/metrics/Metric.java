@@ -1,51 +1,51 @@
 package org.you.metrics;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
-public class Metric
+import org.apache.commons.lang3.StringUtils;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+
+public class Metric implements Cloneable
 {
+    private static final Logger logger = LoggerFactory.getLogger(Metric.class);
+
     private static int idx0 = 0;
     private static int idx1 = 0;
     private static int idx2 = 0;
     private static final int maxIdx = 16;
 
-    private static String template;
-
-    private Map<String,String> tags;
+    private String template;
+    private Set<Tag> tags;
     private String name;
 
 
-    public Metric()
+    public Metric(int tagCount)
     {
         this.name = Metric.nextName();
-        this.tags = new HashMap<>();
+        this.tags = new HashSet<>(tagCount+1);
+        logger.debug("Created metric: {}", this.name);
+
+        for (int t = 0; t < tagCount; t++)
+        {
+            this.tags.add(new Tag());
+        }
+        this.tags.add(new Tag("host", this.name));
+
+        this.template = String.format("{\"metric\":\"%s\",\"tags\":{%s},\"timestamp\":%s,\"value\":%s}",
+                this.name, "%s", "%d", "%d");
     }
 
-    public void addTag(String key, String value)
+    // set or update host tag
+    public void setHost(String host)
     {
-        this.tags.put(key, value);
-
-        StringBuilder sb = new StringBuilder();
-
-        for (Map.Entry<String,String> entry: this.tags.entrySet())
-        {
-            if (sb.length() > 0)
-            {
-                sb.append(',');
-            }
-            sb.append('"');
-            sb.append(entry.getKey());
-            sb.append("\":");
-            sb.append('"');
-            sb.append(entry.getValue());
-            sb.append('"');
-        }
-
-        Metric.template = String.format("{\"metric\":\"%s\",\"tags\":{%s},\"timestamp\":%s,\"value\":%s}",
-                this.name, sb.toString(), "%d", "%d");
+        this.tags.removeIf(t -> StringUtils.equals(t.name(), "host"));
+        this.tags.add(new Tag("host", host));
     }
 
     public String nextDataPoint()
@@ -53,7 +53,7 @@ public class Metric
         long ts = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis());
         int value = ThreadLocalRandom.current().nextInt(100);
 
-        return String.format(Metric.template, ts, value);
+        return String.format(this.template, this.nextTags(), ts, value);
     }
 
     private static String nextName()
@@ -72,5 +72,31 @@ public class Metric
         }
 
         return String.format("metric%05d.metric%03d.metric%03d", idx0, idx1, idx2);
+    }
+
+    private String nextTags()
+    {
+        StringBuilder sb = new StringBuilder();
+
+        for (Tag tag: this.tags)
+        {
+            if (sb.length() > 0)
+            {
+                sb.append(',');
+            }
+
+            sb.append(tag.next());
+        }
+
+        return sb.toString();
+    }
+
+    @Override
+    public Object clone() throws CloneNotSupportedException
+    {
+        Metric clone = (Metric)super.clone();
+        clone.name = this.name;
+        clone.tags = new HashSet<>(this.tags);
+        return clone;
     }
 }

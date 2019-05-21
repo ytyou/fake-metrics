@@ -15,7 +15,6 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.lang3.RandomStringUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,9 +28,7 @@ public class Main
     private static final int defaultThreadPoolSize = 10;
     private static final int defaultHostCount = 2;
     private static final int defaultMetricsCount = 10;
-    private static final int defaultTagCount = 2;
-    private static final int defaultTagKeyLength = 8;
-    private static final int defaultTagValueLength = 10;
+    private static final int defaultTagKeyCount = 2;
     private static final int defaultIntervalSec = 30;
     private static final int defaultOpentsdbPort = 4242;
 
@@ -75,8 +72,7 @@ public class Main
 
         // generate metrics to be shared among all hosts
         int metricsCount = Config.getInstance().getInt("metrics.count", defaultMetricsCount);
-        int tagCount = Config.getInstance().getInt("tag.count", defaultTagCount);
-        ArrayList<Metric> metrics = generateMetrics(metricsCount, tagCount);
+        ArrayList<Metric> metrics = generateMetrics(metricsCount);
 
         // schedule hosts to send metrics
         int hostCount = Config.getInstance().getInt("host.count", defaultHostCount);
@@ -88,6 +84,7 @@ public class Main
         {
             Host host = new Host(metrics);
             long initDelay = random.nextInt(intervalSec);
+            logger.debug("Schedule host {} with initDelay of {}", host, initDelay);
             ScheduledFuture future = executor.scheduleAtFixedRate(host, initDelay, intervalSec, TimeUnit.SECONDS);
             futures.add(future);
         }
@@ -109,7 +106,7 @@ public class Main
 
             for (ScheduledFuture future: futures)
             {
-                future.cancel(false);
+                future.cancel(true);
             }
 
             executor.shutdown();
@@ -144,22 +141,15 @@ public class Main
         return cmd;
     }
 
-    private static ArrayList<Metric> generateMetrics(int metricsCount, int tagCount)
+    private static ArrayList<Metric> generateMetrics(int metricsCount)
     {
         ArrayList<Metric> metrics = new ArrayList<>();
+        int tagCount = Config.getInstance().getInt("tag.key.count", defaultTagKeyCount);
 
         for (int m = 0; m < metricsCount; m++)
         {
-            Metric metric = new Metric();
             int cnt = random.nextInt(tagCount);
-
-            for (int t = 0; t < cnt; t++)
-            {
-                String key = RandomStringUtils.randomAlphanumeric(Config.getInstance().getInt("tag.key.length", defaultTagKeyLength));
-                String value = RandomStringUtils.randomAlphanumeric(Config.getInstance().getInt("tag.value.length", defaultTagValueLength));
-                metric.addTag(key, value);
-            }
-
+            Metric metric = new Metric(cnt);
             metrics.add(metric);
         }
 
