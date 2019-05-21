@@ -51,8 +51,9 @@ public class OpentsdbClient
         OpentsdbClient.port = port;
         OpentsdbClient.token = Config.getInstance().getString("token");
 
+        // create one OpentsdbClient per thread in the thread pool
         instanceIdx = 0;
-        instanceCnt = Config.getInstance().getInt("opentsdb.client.count", 1);
+        instanceCnt = Config.getInstance().getInt("thread.count", 1);
 
         // create default http headers
         headers = new HashSet<>();
@@ -81,7 +82,7 @@ public class OpentsdbClient
         }
     }
 
-    public synchronized void send(Metric metric)
+    public void send(Metric metric)
     {
         try
         {
@@ -104,7 +105,8 @@ public class OpentsdbClient
             }
             else
             {
-                try {
+                try
+                {
                     request.setEntity(new StringEntity(metrics));
                     CloseableHttpResponse response = this.client.execute(request);
                     logger.debug("response: {}", response);

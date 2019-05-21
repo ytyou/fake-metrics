@@ -2,7 +2,7 @@ package org.you.metrics;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class Metric
 {
@@ -12,10 +12,10 @@ public class Metric
     private static final int maxIdx = 16;
 
     private static String template;
-    private static final Random random = new Random(System.currentTimeMillis());
 
     private Map<String,String> tags;
     private String name;
+
 
     public Metric()
     {
@@ -43,16 +43,16 @@ public class Metric
             sb.append('"');
         }
 
-        this.template = String.format("{\"metric\":\"%s\",\"tags\":{%s},\"timestamp\":%s,\"value\":%s}",
+        Metric.template = String.format("{\"metric\":\"%s\",\"tags\":{%s},\"timestamp\":%s,\"value\":%s}",
                 this.name, sb.toString(), "%d", "%d");
     }
 
     public String nextDataPoint()
     {
         long ts = System.currentTimeMillis();
-        int value = random.nextInt(100);
+        int value = ThreadLocalRandom.current().nextInt(100);
 
-        return String.format(template, ts, value);
+        return String.format(Metric.template, ts, value);
     }
 
     private static String nextName()
