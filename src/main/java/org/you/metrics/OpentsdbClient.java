@@ -1,18 +1,26 @@
 package org.you.metrics;
 
-import org.apache.http.client.HttpClient;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.message.BasicHeader;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 
 public class OpentsdbClient
 {
     private static final Logger logger = LoggerFactory.getLogger(Config.class);
-    private static final String template = "{\"metrics\":[%s],\"token\":\"0f320e7db4a2d8ba0a3229753bf7c90d821479da\"}";
+    private static final String template = "{\"metrics\":[%s],\"token\":\"%s\"}";
+    private static final String uri = "api/put?details";
     private static final int maxBuff = 10;
 
     private static OpentsdbClient[] instances;
@@ -21,9 +29,12 @@ public class OpentsdbClient
 
     private static String host;    // if null, output to console
     private static int port;
+    private static String token;
+    private static Set<BasicHeader> headers;
 
-    private HttpClient client;
+    private CloseableHttpClient client;
     private ArrayList<String> dps;
+    private HttpPost request;
 
 
     public static OpentsdbClient getInstance()
@@ -38,15 +49,35 @@ public class OpentsdbClient
     {
         OpentsdbClient.host = host;
         OpentsdbClient.port = port;
+        OpentsdbClient.token = Config.getInstance().getString("token");
 
         instanceIdx = 0;
         instanceCnt = Config.getInstance().getInt("opentsdb.client.count", 1);
+
+        // create default http headers
+        headers = new HashSet<>();
+        headers.add(new BasicHeader("Content-Type", "application/json"));
+        headers.add(new BasicHeader("_token", OpentsdbClient.token));
+
+        HttpClientBuilder builder = HttpClientBuilder.create().setDefaultHeaders(headers);
+
         instances = new OpentsdbClient[instanceCnt];
+
         for (int i = 0; i < instanceCnt; i++)
         {
             instances[i] = new OpentsdbClient();
-            instances[i].client = null;
             instances[i].dps = new ArrayList<>(maxBuff);
+
+            if (StringUtils.isBlank(host))
+            {
+                instances[i].request = null;
+                instances[i].client = null;
+            }
+            else
+            {
+                instances[i].request = new HttpPost(String.format("http://%s:%d/%s", host, port, uri));
+                instances[i].client = builder.build();
+            }
         }
     }
 
@@ -63,13 +94,25 @@ public class OpentsdbClient
 
         if (this.dps.size() >= maxBuff)
         {
-            String metrics = String.format(template, String.join(",", this.dps));
+            String metrics = String.format(template, String.join(",", this.dps), token);
 
             this.dps.clear();
 
             if (this.client == null)
             {
                 System.out.println(metrics);
+            }
+            else
+            {
+                try {
+                    request.setEntity(new StringEntity(metrics));
+                    CloseableHttpResponse response = this.client.execute(request);
+                    logger.debug("response: {}", response);
+                }
+                catch (Exception ex)
+                {
+                    logger.error("Failed to send metrics: ", ex);
+                }
             }
         }
     }

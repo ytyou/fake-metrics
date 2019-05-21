@@ -2,7 +2,6 @@ package org.you.metrics;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.Random;
@@ -46,6 +45,7 @@ public class Main
         // load config
         try
         {
+            logger.info("Loading config from {}", configFile);
             Config.init(configFile);
         }
         catch (IOException ioex)
@@ -90,12 +90,16 @@ public class Main
         try
         {
             String duration = cmd.getOptionValue("duration", "60");
+            logger.info("Waiting for {} seconds", duration);
             Thread.sleep(TimeUnit.SECONDS.toMillis(Integer.parseInt(duration)));
-            executor.shutdown();
         }
         catch (InterruptedException iex)
         {
-
+        }
+        finally
+        {
+            logger.info("Shutting down...");
+            executor.shutdown();
         }
     }
 
