@@ -61,7 +61,6 @@ public class Config
             }
             catch (NumberFormatException nfex)
             {
-                value = defaultValue;
                 logger.debug("Failed to parse config {} in file {}", propertyName, this.propertyFile);
             }
         }

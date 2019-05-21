@@ -25,14 +25,13 @@ public class Main
 {
     private static final Logger logger = LoggerFactory.getLogger(Main.class);
 
-    // Thread pool
-    private static ScheduledThreadPoolExecutor executor;
-
     // config default values
     private static final int defaultThreadPoolSize = 10;
     private static final int defaultHostCount = 2;
     private static final int defaultMetricsCount = 10;
     private static final int defaultTagCount = 2;
+    private static final int defaultTagKeyLength = 8;
+    private static final int defaultTagValueLength = 10;
     private static final int defaultIntervalSec = 30;
     private static final int defaultOpentsdbPort = 4242;
 
@@ -67,12 +66,12 @@ public class Main
         }
         catch (Exception ex)
         {
-
+            logger.error("Failed to initialize OpentsdbClient: ", ex);
         }
 
         // create thread pool
         int poolSize = Config.getInstance().getInt("thread.count", defaultThreadPoolSize);
-        executor = new ScheduledThreadPoolExecutor(poolSize);
+        ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(poolSize);
 
         // generate metrics to be shared among all hosts
         int metricsCount = Config.getInstance().getInt("metrics.count", defaultMetricsCount);
@@ -102,6 +101,7 @@ public class Main
         }
         catch (InterruptedException iex)
         {
+            // do nothing
         }
         finally
         {
@@ -155,8 +155,8 @@ public class Main
 
             for (int t = 0; t < cnt; t++)
             {
-                String key = RandomStringUtils.randomAlphanumeric(8);
-                String value = RandomStringUtils.randomAlphanumeric(10);
+                String key = RandomStringUtils.randomAlphanumeric(Config.getInstance().getInt("tag.key.length", defaultTagKeyLength));
+                String value = RandomStringUtils.randomAlphanumeric(Config.getInstance().getInt("tag.value.length", defaultTagValueLength));
                 metric.addTag(key, value);
             }
 
