@@ -28,11 +28,8 @@ public class Main
     private static final int defaultThreadPoolSize = 10;
     private static final int defaultHostCount = 2;
     private static final int defaultMetricsCount = 10;
-    private static final int defaultTagKeyCount = 2;
     private static final int defaultIntervalSec = 30;
     private static final int defaultOpentsdbPort = 4242;
-
-    private static final Random random = new Random(System.currentTimeMillis());
 
 
     public static void main(String[] args)
@@ -79,6 +76,7 @@ public class Main
         int intervalSec = Config.getInstance().getInt("interval.seconds", defaultIntervalSec);
 
         Set<ScheduledFuture> futures = new HashSet<>();
+        Random random = new Random(System.currentTimeMillis());
 
         for (int i = 0; i < hostCount; i++)
         {
@@ -144,13 +142,10 @@ public class Main
     private static ArrayList<Metric> generateMetrics(int metricsCount)
     {
         ArrayList<Metric> metrics = new ArrayList<>();
-        int tagCount = Config.getInstance().getInt("tag.key.count", defaultTagKeyCount);
 
         for (int m = 0; m < metricsCount; m++)
         {
-            int cnt = random.nextInt(tagCount);
-            Metric metric = new Metric(cnt);
-            metrics.add(metric);
+            metrics.add(new Metric());
         }
 
         return metrics;

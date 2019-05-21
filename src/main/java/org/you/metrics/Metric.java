@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 public class Metric implements Cloneable
 {
     private static final Logger logger = LoggerFactory.getLogger(Metric.class);
+    private static final int defaultTagKeyCount = 2;
 
     private static int idx0 = 0;
     private static int idx1 = 0;
@@ -25,8 +26,12 @@ public class Metric implements Cloneable
     private String name;
 
 
-    public Metric(int tagCount)
+    public Metric()
     {
+        // decide how many tags we will have
+        int tagCount = Config.getInstance().getInt("tag.key.count", defaultTagKeyCount);
+        tagCount = ThreadLocalRandom.current().nextInt(tagCount+1);
+
         this.name = Metric.nextName();
         this.tags = new HashSet<>(tagCount+1);
         logger.debug("Created metric: {}", this.name);
