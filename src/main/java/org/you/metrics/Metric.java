@@ -3,6 +3,7 @@ package org.you.metrics;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 
 public class Metric
 {
@@ -49,7 +50,7 @@ public class Metric
 
     public String nextDataPoint()
     {
-        long ts = System.currentTimeMillis();
+        long ts = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis());
         int value = ThreadLocalRandom.current().nextInt(100);
 
         return String.format(Metric.template, ts, value);
