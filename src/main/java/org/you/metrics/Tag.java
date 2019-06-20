@@ -52,6 +52,11 @@ public class Tag implements Cloneable
         return this.name;
     }
 
+    public boolean isEmpty()
+    {
+        return this.values.size() == 0;
+    }
+
     // "key":"value"
     public String next()
     {

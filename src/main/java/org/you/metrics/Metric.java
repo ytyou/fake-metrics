@@ -85,6 +85,11 @@ public class Metric implements Cloneable
 
         for (Tag tag: this.tags)
         {
+            if (tag.isEmpty())
+            {
+                continue;
+            }
+
             if (sb.length() > 0)
             {
                 sb.append(',');
