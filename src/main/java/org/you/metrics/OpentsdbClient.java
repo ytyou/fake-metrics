@@ -1,6 +1,7 @@
 package org.you.metrics;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
@@ -11,6 +12,8 @@ import org.apache.http.message.BasicHeader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
@@ -21,7 +24,6 @@ public class OpentsdbClient
     private static final Logger logger = LoggerFactory.getLogger(Config.class);
     private static final String template = "{\"metrics\":[%s],\"token\":\"%s\"}";
     private static final String uri = "api/put?details";
-    private static final int maxBuff = 10;
 
     // one instance per thread
     private static ThreadLocal<OpentsdbClient> opentsdbClient;
@@ -29,6 +31,7 @@ public class OpentsdbClient
     private static String host;    // if null, output to console
     private static int port;
     private static String token;
+    private static int batchSize;
     private static Set<BasicHeader> headers;
 
     private CloseableHttpClient client;
@@ -43,7 +46,7 @@ public class OpentsdbClient
 
     private OpentsdbClient()
     {
-        this.dps = new ArrayList<>(maxBuff);
+        this.dps = new ArrayList<>(batchSize);
 
         if (StringUtils.isBlank(host) || StringUtils.isBlank(token))
         {
@@ -58,11 +61,12 @@ public class OpentsdbClient
         }
     }
 
-    public static void init(String host, int port, String token)
+    public static void init(String host, int port, int batchSize, String token)
     {
         OpentsdbClient.host = host;
         OpentsdbClient.port = port;
         OpentsdbClient.token = token;
+        OpentsdbClient.batchSize = batchSize;
 
         // create default http headers
         headers = new HashSet<>();
@@ -84,7 +88,7 @@ public class OpentsdbClient
             t.printStackTrace(System.out);
         }
 
-        if (this.dps.size() >= maxBuff)
+        if (this.dps.size() >= batchSize)
         {
             String metrics = String.format(template, String.join(",", this.dps), token);
 
@@ -96,15 +100,43 @@ public class OpentsdbClient
             }
             else
             {
+                CloseableHttpResponse response = null;
+                InputStream istream = null;
+
                 try
                 {
                     request.setEntity(new StringEntity(metrics));
-                    CloseableHttpResponse response = this.client.execute(request);
+                    response = this.client.execute(request);
                     logger.debug("response: {}", response);
+
+                    HttpEntity entity = response.getEntity();
+                    istream = entity.getContent();
+                    istream.skip(Long.MAX_VALUE);
                 }
                 catch (Exception ex)
                 {
                     logger.error("Failed to send metrics: ", ex);
+                }
+                finally
+                {
+                    try
+                    {
+                        // these must be closed in order for those
+                        // keep-alive connections to be re-used
+                        if (istream != null)
+                        {
+                            istream.close();
+                        }
+
+                        if (response != null)
+                        {
+                            response.close();
+                        }
+                    }
+                    catch (IOException ioex)
+                    {
+                        logger.debug("Failed to close response.", ioex);
+                    }
                 }
             }
         }

@@ -15,6 +15,7 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.lang3.StringUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +31,7 @@ public class Main
     private static final int defaultMetricsCount = 10;
     private static final int defaultIntervalSec = 30;
     private static final int defaultOpentsdbPort = 4242;
+    private static final int defaultBatchSize = 10;
 
 
     public static void main(String[] args)
@@ -55,8 +57,14 @@ public class Main
         {
             String host = Config.getInstance().getString("opentsdb.host");
             int port = Config.getInstance().getInt("opentsdb.port", defaultOpentsdbPort);
+            int batchSize = Config.getInstance().getInt("opentsdb.batch.size", defaultBatchSize);
             String token = cmd.getOptionValue("token");
-            OpentsdbClient.init(host, port, token);
+            if (StringUtils.isBlank(token))
+            {
+                token = Config.getInstance().getString("opentsdb.token");
+            }
+
+            OpentsdbClient.init(host, port, batchSize, token);
         }
         catch (Exception ex)
         {
