@@ -14,12 +14,19 @@ public class Host implements Runnable
     private String name;
     private ArrayList<Metric> metrics;
 
+    private long metricsSent = 0;
+
     public Host(ArrayList<Metric> metrics)
     {
         this.name = String.format("host%05d", Host.id);
         Host.id++;
         this.metrics = cloneMetrics(metrics);
         logger.debug("Host {} created", this.name);
+    }
+
+    public long getMetricsSent()
+    {
+        return metricsSent;
     }
 
     @Override
@@ -32,6 +39,8 @@ public class Host implements Runnable
         {
             client.send(metric);
         }
+
+        metricsSent += metrics.size();
     }
 
     @Override

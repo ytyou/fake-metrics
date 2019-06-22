@@ -1,13 +1,10 @@
 package org.you.metrics;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.Random;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -83,12 +80,15 @@ public class Main
         int hostCount = Config.getInstance().getInt("host.count", defaultHostCount);
         int intervalSec = Config.getInstance().getInt("interval.seconds", defaultIntervalSec);
 
+        List<Host> hosts = new LinkedList<>();
+
         Set<ScheduledFuture> futures = new HashSet<>();
         Random random = new Random(System.currentTimeMillis());
 
         for (int i = 0; i < hostCount; i++)
         {
             Host host = new Host(metrics);
+            hosts.add(host);
             long initDelay = random.nextInt(intervalSec);
             logger.debug("Schedule host {} with initDelay of {}", host, initDelay);
             ScheduledFuture future = executor.scheduleAtFixedRate(host, initDelay, intervalSec, TimeUnit.SECONDS);
@@ -112,11 +112,30 @@ public class Main
 
             for (ScheduledFuture future: futures)
             {
-                future.cancel(true);
+                future.cancel(false);
+            }
+
+            // wait a bit so we can collect more accurate stats
+            try
+            {
+                Thread.sleep(2000);
+            }
+            catch (InterruptedException iex)
+            {
+                // do nothing
             }
 
             executor.shutdown();
         }
+
+        long metricsSent = 0;
+
+        for (Host host: hosts)
+        {
+            metricsSent += host.getMetricsSent();
+        }
+
+        logger.info("Total metrics sent: " + metricsSent);
     }
 
     private static CommandLine parseCmdLineOptions(String[] args)
